@@ -5,14 +5,26 @@
   content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui"
 />
 
-<style>
-  body {
-    margin: 0;
+<script type="module">
+  const activeDemo = (window.location.pathname.match(/([^\/]+)/g) || [])[0];
+  const { body } = document;
+
+  const demos = ["dvd"];
+
+  if (demos.includes(activeDemo)) {
+    import(`/${activeDemo}/index.js`);
+  } else {
+    demos
+      .map(demo => {
+        const link = document.createElement("a");
+        const item = document.createElement("ul");
+        link.innerText = demo;
+        link.href = demo;
+        item.appendChild(link);
+        return item;
+      })
+      .forEach(demoLink => body.appendChild(demoLink));
   }
-</style>
-
-<script type="module" src="/index.js"></script>
-
-<canvas></canvas>
+</script>
 
 <span id="browser-sync-binding"></span>

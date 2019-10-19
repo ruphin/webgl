@@ -1,4 +1,4 @@
-import { fullscreen } from "./webgl.js";
+import { fullscreen } from "../webgl.js";
 
 const vertexShaderSource = `#version 300 es
 
@@ -66,8 +66,8 @@ const createProgram = (vertexShader, fragmentShader) => {
   gl.deleteProgram(program);
 };
 
-const canvas = document.querySelector("canvas");
-fullscreen(canvas);
+const canvas = document.body.appendChild(document.createElement("canvas"));
+fullscreen(canvas, true);
 const gl = canvas.getContext("webgl2");
 
 const vertexShader = createShader(gl.VERTEX_SHADER, vertexShaderSource);

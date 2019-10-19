@@ -1,5 +1,8 @@
 export const fullscreen = (canvas, hiDPI = false) => {
   document.body.style.display = "flex";
+  document.body.style.margin = 0;
+  canvas.style.height = "100vh";
+  canvas.style.width = "100vw";
   const pixelRatio = (hiDPI && window.devicePixelRatio) || 1;
   const fullscreenSize = () => {
     const width = Math.floor(window.innerWidth * pixelRatio);
@@ -11,8 +14,6 @@ export const fullscreen = (canvas, hiDPI = false) => {
 };
 
 export const resize = (canvas, height, width) => {
-  canvas.style.height = `${height}px`;
-  canvas.style.width = `${width}px`;
   canvas.height = height;
   canvas.width = width;
 };
