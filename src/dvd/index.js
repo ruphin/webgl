@@ -1,79 +1,71 @@
-import { fullscreen } from "../webgl.js";
+import {
+  fullscreen,
+  glsl,
+  createVertexShader,
+  createFragmentShader,
+  createProgram
+} from "../webgl.js";
 
-const vertexShaderSource = `#version 300 es
+const vertexShaderSource = glsl`#version 300 es
 
-// an attribute is an input (in) to a vertex shader.
-// It will receive data from a buffer
-in vec2 a_position;
 
-// Used to pass in the resolution of the canvas
-uniform vec2 u_resolution;
+  // an attribute is an input (in) to a vertex shader.
+  // It will receive data from a buffer
+  in vec2 a_position;
 
-// all shaders have a main function
-void main() {
+  // Used to pass in the resolution of the canvas
+  uniform vec2 u_resolution;
 
-  // convert the position from pixels to 0.0 to 1.0
-  vec2 zeroToOne = a_position / u_resolution;
+  // translation to add to position
+  uniform vec2 u_translation;
 
-  // convert from 0->1 to 0->2
-  vec2 zeroToTwo = zeroToOne * 2.0;
+  // rotation values
+  uniform vec2 u_rotation;
 
-  // convert from 0->2 to -1->+1 (clipspace)
-  vec2 clipSpace = zeroToTwo - 1.0;
+  // all shaders have a main function
+  void main() {
+    // Rotate the position
+    vec2 rotatedPosition = vec2(
+      a_position.x * u_rotation.y + a_position.y * u_rotation.x,
+      a_position.y * u_rotation.y - a_position.x * u_rotation.x);
 
-  gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-}
+    // Add in the translation
+    vec2 position = rotatedPosition + u_translation;
+
+    // convert the position from pixels to 0.0 to 1.0
+    vec2 zeroToOne = position / u_resolution;
+
+    // convert from 0->1 to 0->2
+    vec2 zeroToTwo = zeroToOne * 2.0;
+
+    // convert from 0->2 to -1->+1 (clipspace)
+    vec2 clipSpace = zeroToTwo - 1.0;
+
+    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+  }
 `;
 
-const fragmentShaderSource = `#version 300 es
+const fragmentShaderSource = glsl`#version 300 es
 
-precision mediump float;
+  precision mediump float;
 
-uniform vec4 u_color;
+  uniform vec4 u_color;
 
-// we need to declare an output for the fragment shader
-out vec4 outColor;
+  // we need to declare an output for the fragment shader
+  out vec4 outColor;
 
-void main() {
-  outColor = u_color;
-}
+  void main() {
+    outColor = u_color;
+  }
 `;
-
-const createShader = (type, source) => {
-  const shader = gl.createShader(type);
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  const success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-  if (success) {
-    return shader;
-  }
-
-  console.warn(gl.getShaderInfoLog(shader));
-  gl.deleteShader(shader);
-};
-
-const createProgram = (vertexShader, fragmentShader) => {
-  const program = gl.createProgram();
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  const success = gl.getProgramParameter(program, gl.LINK_STATUS);
-  if (success) {
-    return program;
-  }
-
-  console.warn(gl.getProgramInfoLog(program));
-  gl.deleteProgram(program);
-};
 
 const canvas = document.body.appendChild(document.createElement("canvas"));
 fullscreen(canvas, true);
 const gl = canvas.getContext("webgl2");
 
-const vertexShader = createShader(gl.VERTEX_SHADER, vertexShaderSource);
-const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
-
-const program = createProgram(vertexShader, fragmentShader);
+const vertexShader = createVertexShader(gl, vertexShaderSource);
+const fragmentShader = createFragmentShader(gl, fragmentShaderSource);
+const program = createProgram(gl, vertexShader, fragmentShader);
 
 const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
 
@@ -82,6 +74,9 @@ const resolutionUniformLocation = gl.getUniformLocation(
   program,
   "u_resolution"
 );
+
+const translationLocation = gl.getUniformLocation(program, "u_translation");
+const rotationLocation = gl.getUniformLocation(program, "u_rotation");
 const colorLocation = gl.getUniformLocation(program, "u_color");
 
 const positionBuffer = gl.createBuffer();
@@ -111,14 +106,26 @@ gl.vertexAttribPointer(
 ////////////////////////////////
 
 // Fill the buffer with the values that define a rectangle.
-const setRectangle = (x, y, width, height) => {
-  const x1 = x;
-  const x2 = x + width;
-  const y1 = y;
-  const y2 = y + height;
+const setRectangle = () => {
   gl.bufferData(
     gl.ARRAY_BUFFER,
-    new Float32Array([x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2]),
+    new Float32Array([
+      // Top Left Triangle
+      0,
+      0,
+      150,
+      0,
+      0,
+      150,
+
+      // Bottom Right Triangle
+      0,
+      150,
+      150,
+      150,
+      150,
+      0
+    ]),
     gl.STATIC_DRAW
   );
 };
@@ -133,19 +140,34 @@ gl.bindVertexArray(vao);
 // pixels to clipspace in the shader
 gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
+const width = 150;
+const height = 150;
+let translation = [0, 0];
+const rotation = [0, 1];
+const color = [Math.random(), Math.random(), Math.random(), 1];
+
 const drawScene = () => {
   // Clear the canvas
   // gl.clearColor(0, 0, 0, 0);
   // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-  setRectangle(translation[0], translation[1], width, height);
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
-  // Set a random color.
+  gl.uniform2f(
+    resolutionUniformLocation,
+    gl.drawingBufferWidth,
+    gl.drawingBufferHeight
+  );
+
+  setRectangle();
+
+  // Set the color
   gl.uniform4fv(colorLocation, color);
 
-  // Draw the rectangle.
+  gl.uniform2fv(translationLocation, translation);
+  // Set the rotation.
+  gl.uniform2fv(rotationLocation, rotation);
+  // Draw the shape
   const primitiveType = gl.TRIANGLES;
   const offset = 0;
   const count = 6;
@@ -153,10 +175,6 @@ const drawScene = () => {
 };
 
 let count = 0;
-let translation;
-let width = 200;
-let height = 200;
-let color = [Math.random(), Math.random(), Math.random(), 1];
 
 const step = () => {
   window.requestAnimationFrame(() => {
