@@ -9,7 +9,7 @@
   const activeDemo = (window.location.pathname.match(/([^\/]+)/g) || [])[0];
   const { body } = document;
 
-  const demos = ["dvd", "transforms", "threedee"];
+  const demos = ["dvd", "transforms", "threedee", "camera"];
 
   if (demos.includes(activeDemo)) {
     import(`/${activeDemo}/index.js`);
