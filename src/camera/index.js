@@ -410,36 +410,75 @@ glVertexAttributePointer({
   offset: 0
 });
 
-const drawScene = ms => {
+///////////////
+// Variables
+///////////////
+
+let pitch = 0;
+let yaw = 0;
+const viewDirection = m4.create();
+const cameraPosition = [-100, 100, 700];
+
+///////////////
+// Constants
+///////////////
+
+const PITCH_MAX = glMatrix.toRadian(89.9);
+const PITCH_MIN = -PITCH_MAX;
+
+const moving = {};
+const moveSpeed = 1;
+const FOV = glMatrix.toRadian(60);
+
+let lastPaintTime = Date.now();
+
+const drawScene = paintTime => {
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  const rotationsPerMs = 1 / 3000;
-  const cameraAngle = glMatrix.toRadian(ms * rotationsPerMs * 360);
-  const fCount = 5;
-  const radius = 200;
+  const fCount = 10;
+  const radius = 400;
 
   const near = 1;
-  const far = 2000;
 
   const aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
-  const fieldOfView = glMatrix.toRadian(60);
+
+  const moveDistance = (paintTime - lastPaintTime) * moveSpeed;
+  if (moving.forward) {
+    cameraPosition[0] -= Math.sin(yaw) * moveDistance;
+    cameraPosition[2] -= Math.cos(yaw) * moveDistance;
+    cameraPosition[1] += Math.sin(pitch) * moveDistance;
+  }
+  if (moving.backward) {
+    cameraPosition[0] += Math.sin(yaw) * moveDistance;
+    cameraPosition[2] += Math.cos(yaw) * moveDistance;
+    cameraPosition[1] -= Math.sin(pitch) * moveDistance;
+  }
+  if (moving.left) {
+    cameraPosition[0] -= Math.cos(yaw) * moveDistance;
+    cameraPosition[2] += Math.sin(yaw) * moveDistance;
+  }
+  if (moving.right) {
+    cameraPosition[0] += Math.cos(yaw) * moveDistance;
+    cameraPosition[2] -= Math.sin(yaw) * moveDistance;
+  }
+  if (moving.up) {
+    cameraPosition[1] += moveDistance;
+  }
+  if (moving.down) {
+    cameraPosition[1] -= moveDistance;
+  }
 
   const cameraMatrix = [];
-  m4.fromYRotation(cameraMatrix, cameraAngle);
-  m4.translate(cameraMatrix, cameraMatrix, [0, 50, radius * 1.5]);
+  m4.fromTranslation(cameraMatrix, cameraPosition);
+  m4.multiply(cameraMatrix, cameraMatrix, viewDirection);
 
-  // Where to look with the camera
-  const focusPoint = [-radius, 0, 0];
-
-  // cameraMatrix[12..14] contains the computed position of our camera
-  const up = [0, 1, 0];
   const viewMatrix = [];
-  m4.lookAt(viewMatrix, cameraMatrix.slice(12, 15), focusPoint, up);
+  m4.invert(viewMatrix, cameraMatrix);
 
   const projectionMatrix = [];
   // The projection frustum
-  m4.perspective(projectionMatrix, fieldOfView, aspectRatio, near, far);
+  m4.perspective(projectionMatrix, FOV, aspectRatio, near);
 
   const viewProjectionMatrix = [];
   m4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
@@ -467,6 +506,91 @@ const drawScene = ms => {
     gl.drawArrays(gl.TRIANGLES, offset, count);
   });
   requestAnimationFrame(drawScene);
+  lastPaintTime = paintTime;
+};
+
+document.addEventListener("keydown", e => {
+  switch (e.key) {
+    case "w":
+    case "W":
+      moving.forward = true;
+      break;
+    case "s":
+    case "S":
+      moving.backward = true;
+      break;
+    case "a":
+    case "A":
+      moving.left = true;
+      break;
+    case "d":
+    case "D":
+      moving.right = true;
+      break;
+    case " ":
+      moving.up = true;
+      break;
+    case "Shift":
+      moving.down = true;
+      break;
+  }
+});
+
+document.addEventListener("keyup", e => {
+  switch (e.key) {
+    case "w":
+    case "W":
+      moving.forward = false;
+      break;
+    case "s":
+    case "S":
+      moving.backward = false;
+      break;
+    case "a":
+    case "A":
+      moving.left = false;
+      break;
+    case "d":
+    case "D":
+      moving.right = false;
+      break;
+    case " ":
+      moving.up = false;
+      break;
+    case "Shift":
+      moving.down = false;
+      break;
+  }
+});
+
+canvas.addEventListener("click", () => {
+  canvas.requestPointerLock();
+});
+
+document.addEventListener("pointerlockchange", () => {
+  if (document.pointerLockElement === canvas) {
+    document.addEventListener("mousemove", updateCameraAngle);
+  } else {
+    document.removeEventListener("mousemove", updateCameraAngle);
+  }
+});
+
+const updateCameraAngle = e => {
+  pitch -= e.movementY / 100;
+  yaw -= e.movementX / 100;
+  if (pitch > PITCH_MAX) {
+    pitch = PITCH_MAX;
+  } else if (pitch < PITCH_MIN) {
+    pitch = PITCH_MIN;
+  }
+  m4.fromYRotation(viewDirection, yaw);
+  m4.rotateX(viewDirection, viewDirection, pitch);
 };
 
 requestAnimationFrame(drawScene);
+
+const UIContainer = document.body.appendChild(document.createElement("div"));
+UIContainer.style.position = "absolute";
+
+UIContainer.appendChild(document.createElement("span")).innerText =
+  "Click anywhere to capture mouse. Move with WASD Shift Space";
