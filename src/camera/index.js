@@ -425,6 +425,7 @@ const cameraPosition = [-100, 100, 700];
 
 const PITCH_MAX = glMatrix.toRadian(89.9);
 const PITCH_MIN = -PITCH_MAX;
+const UP = [0, 1, 0];
 
 const moving = {};
 const moveSpeed = 1;
@@ -435,6 +436,13 @@ let lastPaintTime = Date.now();
 const drawScene = paintTime => {
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  const focusAngle = glMatrix.toRadian(paintTime / 10);
+  const focusPoint = [0, -cameraPosition[1] / 2, 0];
+  const focusDistance = 600;
+
+  focusPoint[0] = Math.sin(focusAngle) * focusDistance;
+  focusPoint[2] = Math.cos(focusAngle) * focusDistance;
 
   const fCount = 10;
   const radius = 400;
@@ -495,8 +503,14 @@ const drawScene = paintTime => {
     const matrix = viewProjectionMatrix.slice();
     // Orient the Fs properly
     m4.rotateZ(matrix, matrix, glMatrix.toRadian(180));
-    m4.translate(matrix, matrix, [x - 50, -75, z - 15]);
-
+    if (i % 2) {
+      const focusMatrix = [];
+      m4.targetTo(focusMatrix, [x - 25, -38, z - 8], focusPoint, UP);
+      m4.multiply(matrix, matrix, focusMatrix);
+      m4.translate(matrix, matrix, [-25, -37, -7]);
+    } else {
+      m4.translate(matrix, matrix, [x - 50, -75, z - 15]);
+    }
     // Set the matrix to our uniform location for the vertex shader to use
     gl.uniformMatrix4fv(matrixLocation, false, matrix);
 
@@ -505,6 +519,25 @@ const drawScene = paintTime => {
     const count = 16 * 6;
     gl.drawArrays(gl.TRIANGLES, offset, count);
   });
+
+  const matrix = viewProjectionMatrix.slice();
+  const focusMatrix = [];
+  m4.targetTo(
+    focusMatrix,
+    [-focusPoint[0], -focusPoint[1], focusPoint[2]],
+    cameraPosition,
+    UP
+  );
+  m4.multiply(matrix, matrix, focusMatrix);
+  // m4.rotateX(matrix, matrix, Math.PI);
+  m4.rotateZ(matrix, matrix, Math.PI);
+  // m4.translate(matrix, matrix, focusPoint);
+
+  gl.uniformMatrix4fv(matrixLocation, false, matrix);
+  const offset = 0;
+  const count = 16 * 6;
+  gl.drawArrays(gl.TRIANGLES, offset, count);
+
   requestAnimationFrame(drawScene);
   lastPaintTime = paintTime;
 };
