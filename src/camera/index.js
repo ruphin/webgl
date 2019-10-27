@@ -416,8 +416,34 @@ glVertexAttributePointer({
 
 let pitch = 0;
 let yaw = 0;
-const viewDirection = m4.create();
-const cameraPosition = [-100, 100, 700];
+const viewDirection = [
+  0.9089657664299011,
+  0,
+  0.4168708026409149,
+  0,
+  0.31862640380859375,
+  0.6448265314102173,
+  -0.6947488188743591,
+  0,
+  -0.26880934834480286,
+  0.7643289566040039,
+  0.5861252546310425,
+  0,
+  0,
+  0,
+  0,
+  1
+];
+const cameraPosition = [-800, 1700, 2000];
+
+const fGridSize = 19;
+const fGridDistance = 200;
+
+const cameraMoveSpeed = 1;
+const mouseSensitivity = 0.01;
+const FOV = glMatrix.toRadian(60);
+
+const minViewDistance = 1;
 
 ///////////////
 // Constants
@@ -426,32 +452,31 @@ const cameraPosition = [-100, 100, 700];
 const PITCH_MAX = glMatrix.toRadian(89.9);
 const PITCH_MIN = -PITCH_MAX;
 const UP = [0, 1, 0];
-
 const moving = {};
-const moveSpeed = 1;
-const FOV = glMatrix.toRadian(60);
-
 let lastPaintTime = Date.now();
+
+//////////////////
+// Draw function
+//////////////////
 
 const drawScene = paintTime => {
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  // Create a point to draw an F that other Fs will look at
   const focusAngle = glMatrix.toRadian(paintTime / 10);
-  const focusPoint = [0, -cameraPosition[1] / 2, 0];
-  const focusDistance = 600;
-
-  focusPoint[0] = Math.sin(focusAngle) * focusDistance;
-  focusPoint[2] = Math.cos(focusAngle) * focusDistance;
-
-  const fCount = 10;
-  const radius = 400;
-
-  const near = 1;
+  const focusDistance = 1000;
+  // It rotates around the Y axis
+  const focusPoint = [
+    Math.sin(focusAngle) * focusDistance,
+    -cameraPosition[1] / 2,
+    Math.cos(focusAngle) * focusDistance
+  ];
 
   const aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
 
-  const moveDistance = (paintTime - lastPaintTime) * moveSpeed;
+  // Calculate the new position of the camera (should still be capped directionally)
+  const moveDistance = (paintTime - lastPaintTime) * cameraMoveSpeed;
   if (moving.forward) {
     cameraPosition[0] -= Math.sin(yaw) * moveDistance;
     cameraPosition[2] -= Math.cos(yaw) * moveDistance;
@@ -486,42 +511,43 @@ const drawScene = paintTime => {
 
   const projectionMatrix = [];
   // The projection frustum
-  m4.perspective(projectionMatrix, FOV, aspectRatio, near);
+  m4.perspective(projectionMatrix, FOV, aspectRatio, minViewDistance);
 
   const viewProjectionMatrix = [];
   m4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
 
-  // For each of the Fs in fCount
-  [...Array(fCount)].forEach((_, i) => {
-    // Arrange them in a circle
-    const angle = glMatrix.toRadian((i * 360) / fCount);
+  // Create a NxN grid of Fs
+  [...Array(fGridSize)].forEach((_, xIndex) => {
+    [...Array(fGridSize)].forEach((_, zIndex) => {
+      // Compute the x and z position from the angle
+      const x = (xIndex - fGridSize / 2) * fGridDistance;
+      const z = (zIndex - fGridSize / 2) * fGridDistance;
 
-    // Compute the x and z position from the angle
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
+      const matrix = viewProjectionMatrix.slice();
+      // Orient the Fs properly
+      m4.rotateZ(matrix, matrix, glMatrix.toRadian(180));
+      if ((xIndex + zIndex) % 2) {
+        const focusMatrix = [];
+        m4.targetTo(focusMatrix, [x - 25, -38, z - 8], focusPoint, UP);
+        m4.multiply(matrix, matrix, focusMatrix);
+        m4.translate(matrix, matrix, [-25, -37, -7]);
+      } else {
+        m4.translate(matrix, matrix, [x - 50, -75, z - 15]);
+      }
+      // Set the matrix to our uniform location for the vertex shader to use
+      gl.uniformMatrix4fv(matrixLocation, false, matrix);
 
-    const matrix = viewProjectionMatrix.slice();
-    // Orient the Fs properly
-    m4.rotateZ(matrix, matrix, glMatrix.toRadian(180));
-    if (i % 2) {
-      const focusMatrix = [];
-      m4.targetTo(focusMatrix, [x - 25, -38, z - 8], focusPoint, UP);
-      m4.multiply(matrix, matrix, focusMatrix);
-      m4.translate(matrix, matrix, [-25, -37, -7]);
-    } else {
-      m4.translate(matrix, matrix, [x - 50, -75, z - 15]);
-    }
-    // Set the matrix to our uniform location for the vertex shader to use
-    gl.uniformMatrix4fv(matrixLocation, false, matrix);
-
-    // Draw the loaded triangles from the buffer
-    const offset = 0;
-    const count = 16 * 6;
-    gl.drawArrays(gl.TRIANGLES, offset, count);
+      // Draw the loaded triangles from the buffer
+      const offset = 0;
+      const count = 16 * 6;
+      gl.drawArrays(gl.TRIANGLES, offset, count);
+    });
   });
 
+  // Draw the F that is the focus
   const matrix = viewProjectionMatrix.slice();
   const focusMatrix = [];
+  // Make it look at the camera
   m4.targetTo(
     focusMatrix,
     [-focusPoint[0], -focusPoint[1], focusPoint[2]],
@@ -602,15 +628,15 @@ canvas.addEventListener("click", () => {
 
 document.addEventListener("pointerlockchange", () => {
   if (document.pointerLockElement === canvas) {
-    document.addEventListener("mousemove", updateCameraAngle);
+    document.addEventListener("mousemove", updateViewDirection);
   } else {
-    document.removeEventListener("mousemove", updateCameraAngle);
+    document.removeEventListener("mousemove", updateViewDirection);
   }
 });
 
-const updateCameraAngle = e => {
-  pitch -= e.movementY / 100;
-  yaw -= e.movementX / 100;
+const updateViewDirection = e => {
+  pitch -= e.movementY * mouseSensitivity;
+  yaw -= e.movementX * mouseSensitivity;
   if (pitch > PITCH_MAX) {
     pitch = PITCH_MAX;
   } else if (pitch < PITCH_MIN) {
