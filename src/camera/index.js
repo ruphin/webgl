@@ -16,21 +16,20 @@ const vertexShaderSource = glsl`#version 300 es
   // an attribute is an input (in) to a vertex shader.
   // It will receive data from a buffer
   in vec4 a_position;
-  in vec4 a_color;
 
   // A matrix to transform the positions by
   uniform mat4 u_matrix;
 
   // a varying the color to the fragment shader
-  out vec4 v_color;
+  out vec2 v_texcoord;
 
 // all shaders have a main function
   void main() {
     // Multiply the position by the matrix.
     gl_Position = u_matrix * a_position;
 
-    // Pass the color to the fragment shader.
-    v_color = a_color;
+    // Pass the xz coordinate to the fragment shader
+    v_texcoord = vec2(a_position.xz);
   }
 `;
 
@@ -39,292 +38,58 @@ const fragmentShaderSource = glsl`#version 300 es
   precision mediump float;
 
   // the varied color passed from the vertex shader
-  in vec4 v_color;
+  in vec2 v_texcoord;
 
+  uniform sampler2D u_texture;
   // we need to declare an output for the fragment shader
   out vec4 outColor;
 
   void main() {
-    outColor = v_color;
+    float total = floor(v_texcoord.x) +
+                  floor(v_texcoord.y);
+    bool isEven = mod(total,2.0)==0.0;
+    vec4 col1 = vec4(0.0,0.0,1.0,1.0);
+    vec4 col2 = vec4(1.0,1.0,1.0,1.0);
+    outColor = (isEven)? col1:col2;
   }
 `;
 
 // Fill the color buffer with colors
-const loadColors = () => {
+const loadTexture = () => {
   gl.bufferData(
     gl.ARRAY_BUFFER,
     // prettier-ignore
-    new Uint8Array([
-          // left column front
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-
-          // top rung front
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-
-          // middle rung front
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-
-          // left column back
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-
-          // top rung back
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-
-          // middle rung back
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
-
-          // top
-        70, 200, 210,
-        70, 200, 210,
-        70, 200, 210,
-        70, 200, 210,
-        70, 200, 210,
-        70, 200, 210,
-
-          // top rung right
-        200, 200, 70,
-        200, 200, 70,
-        200, 200, 70,
-        200, 200, 70,
-        200, 200, 70,
-        200, 200, 70,
-
-          // under top rung
-        210, 100, 70,
-        210, 100, 70,
-        210, 100, 70,
-        210, 100, 70,
-        210, 100, 70,
-        210, 100, 70,
-
-          // between top rung and middle
-        210, 160, 70,
-        210, 160, 70,
-        210, 160, 70,
-        210, 160, 70,
-        210, 160, 70,
-        210, 160, 70,
-
-          // top of middle rung
-        70, 180, 210,
-        70, 180, 210,
-        70, 180, 210,
-        70, 180, 210,
-        70, 180, 210,
-        70, 180, 210,
-
-          // right of middle rung
-        100, 70, 210,
-        100, 70, 210,
-        100, 70, 210,
-        100, 70, 210,
-        100, 70, 210,
-        100, 70, 210,
-
-          // bottom of middle rung.
-        76, 210, 100,
-        76, 210, 100,
-        76, 210, 100,
-        76, 210, 100,
-        76, 210, 100,
-        76, 210, 100,
-
-          // right of bottom
-        140, 210, 80,
-        140, 210, 80,
-        140, 210, 80,
-        140, 210, 80,
-        140, 210, 80,
-        140, 210, 80,
-
-          // bottom
-        90, 130, 110,
-        90, 130, 110,
-        90, 130, 110,
-        90, 130, 110,
-        90, 130, 110,
-        90, 130, 110,
-
-          // left side
-        160, 160, 220,
-        160, 160, 220,
-        160, 160, 220,
-        160, 160, 220,
-        160, 160, 220,
-        160, 160, 220,
+    new Float32Array([
+        0, 0,
+        0, 10,
+        10, 0,
+        0, 10,
+        10, 10,
+        10, 0
       ]),
     gl.STATIC_DRAW
   );
 };
 
-// Fill the buffer with triangles that form a letter F shape
+// Fill the buffer with a flat floor panel
 const loadGeometry = () => {
   gl.bufferData(
     gl.ARRAY_BUFFER,
     // prettier-ignore
     new Float32Array([
-          // left column front
-          0,   0,  0,
-          0, 150,  0,
-          30,   0,  0,
-          0, 150,  0,
-          30, 150,  0,
-          30,   0,  0,
-
-          // top rung front
-          30,   0,  0,
-          30,  30,  0,
-          100,   0,  0,
-          30,  30,  0,
-          100,  30,  0,
-          100,   0,  0,
-
-          // middle rung front
-          30,  60,  0,
-          30,  90,  0,
-          67,  60,  0,
-          30,  90,  0,
-          67,  90,  0,
-          67,  60,  0,
-
-          // left column back
-            0,   0,  30,
-           30,   0,  30,
-            0, 150,  30,
-            0, 150,  30,
-           30,   0,  30,
-           30, 150,  30,
-
-          // top rung back
-           30,   0,  30,
-          100,   0,  30,
-           30,  30,  30,
-           30,  30,  30,
-          100,   0,  30,
-          100,  30,  30,
-
-          // middle rung back
-           30,  60,  30,
-           67,  60,  30,
-           30,  90,  30,
-           30,  90,  30,
-           67,  60,  30,
-           67,  90,  30,
-
-          // top
-            0,   0,   0,
-          100,   0,   0,
-          100,   0,  30,
-            0,   0,   0,
-          100,   0,  30,
-            0,   0,  30,
-
-          // top rung right
-          100,   0,   0,
-          100,  30,   0,
-          100,  30,  30,
-          100,   0,   0,
-          100,  30,  30,
-          100,   0,  30,
-
-          // under top rung
-          30,   30,   0,
-          30,   30,  30,
-          100,  30,  30,
-          30,   30,   0,
-          100,  30,  30,
-          100,  30,   0,
-
-          // between top rung and middle
-          30,   30,   0,
-          30,   60,  30,
-          30,   30,  30,
-          30,   30,   0,
-          30,   60,   0,
-          30,   60,  30,
-
-          // top of middle rung
-          30,   60,   0,
-          67,   60,  30,
-          30,   60,  30,
-          30,   60,   0,
-          67,   60,   0,
-          67,   60,  30,
-
-          // right of middle rung
-          67,   60,   0,
-          67,   90,  30,
-          67,   60,  30,
-          67,   60,   0,
-          67,   90,   0,
-          67,   90,  30,
-
-          // bottom of middle rung.
-          30,   90,   0,
-          30,   90,  30,
-          67,   90,  30,
-          30,   90,   0,
-          67,   90,  30,
-          67,   90,   0,
-
-          // right of bottom
-          30,   90,   0,
-          30,  150,  30,
-          30,   90,  30,
-          30,   90,   0,
-          30,  150,   0,
-          30,  150,  30,
-
-          // bottom
-          0,   150,   0,
-          0,   150,  30,
-          30,  150,  30,
-          0,   150,   0,
-          30,  150,  30,
-          30,  150,   0,
-
-          // left side
-          0,   0,   0,
-          0,   0,  30,
-          0, 150,  30,
-          0,   0,   0,
-          0, 150,  30,
-          0, 150,   0,
+      0, 0, 0,
+      100, 0, 0,
+      0, 0, 100,
+      100, 0, 0,
+      100, 0, 100,
+      0, 0, 100
       ]),
     gl.STATIC_DRAW
   );
 };
-
+//////////////////////////
+// Standard setup stuff
+///////////////////////////
 const canvas = document.body.appendChild(document.createElement("canvas"));
 fullscreen(canvas, true);
 const gl = canvas.getContext("webgl2");
@@ -349,6 +114,61 @@ const matrixLocation = gl.getUniformLocation(program, "u_matrix");
 const vao = gl.createVertexArray();
 // Make it the current vertex array
 gl.bindVertexArray(vao);
+
+////////////////////
+// CREATE A TEXTURE
+////////////////////
+
+const checkerboardTexture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, checkerboardTexture);
+const WHITE = "rgb(255,255,255)";
+const BLUE = "rgb(0,0,255)";
+const textureCanvas = document.createElement("canvas");
+const textureContext = textureCanvas.getContext("2d");
+const textureSize = 2;
+const textureHalfSize = textureSize / 2;
+textureCanvas.width = textureSize;
+textureCanvas.height = textureSize;
+textureContext.fillStyle = WHITE;
+textureContext.fillRect(0, 0, textureSize, textureSize);
+textureContext.fillStyle = BLUE;
+textureContext.fillRect(0, 0, textureHalfSize, textureHalfSize);
+textureContext.fillRect(
+  textureHalfSize,
+  textureHalfSize,
+  textureSize,
+  textureSize
+);
+gl.texImage2D(
+  gl.TEXTURE_2D,
+  0,
+  gl.RGBA,
+  gl.RGBA,
+  gl.UNSIGNED_BYTE,
+  textureCanvas
+);
+
+// Create a texture.
+const texture = gl.createTexture();
+
+// use texture unit 0
+gl.activeTexture(gl.TEXTURE0 + 0);
+
+// bind to the TEXTURE_2D bind point of texture unit 0
+gl.bindTexture(gl.TEXTURE_2D, texture);
+
+// Fill the texture with a 1x1 blue pixel.
+gl.texImage2D(
+  gl.TEXTURE_2D,
+  0,
+  gl.RGBA,
+  1,
+  1,
+  0,
+  gl.RGBA,
+  gl.UNSIGNED_BYTE,
+  new Uint8Array([0, 0, 255, 255])
+);
 
 ///////////////////
 // POSITION STUFF
@@ -381,30 +201,30 @@ glVertexAttributePointer({
 });
 
 ///////////////////
-// COLOR STUFF
+// TEXTURE STUFF
 ///////////////////
 
-// The color attribute passed to the vertex shader
-const colorAttributeLocation = gl.getAttribLocation(program, "a_color");
+// The texture coordinate attribute passed to the vertex shader
+const texcoordAttributeLocation = gl.getAttribLocation(program, "a_texcoord");
 
 // Turn it on
-gl.enableVertexAttribArray(colorAttributeLocation);
+gl.enableVertexAttribArray(texcoordAttributeLocation);
 
-// Make a buffer for the colors
-const colorBuffer = gl.createBuffer();
+// create the texcoord buffer, make it the current ARRAY_BUFFER
+// and copy in the texcoord values
+const texcoordBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+loadTexture();
 
-// Use this buffer as the current ARRAY_BUFFER
-gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+// Turn on the attribute
+gl.enableVertexAttribArray(texcoordAttributeLocation);
 
-// Load the geometry into ARRAY_BUFFER
-loadColors();
-
-// Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
+// Tell the attribute how to get data out of texture coordinate buffer (ARRAY_BUFFER)
 glVertexAttributePointer({
   gl,
-  attributeLocation: colorAttributeLocation,
-  size: 3,
-  type: gl.UNSIGNED_BYTE,
+  attributeLocation: texcoordAttributeLocation,
+  size: 2,
+  type: gl.FLOAT,
   normalize: true,
   stride: 0,
   offset: 0
@@ -414,30 +234,12 @@ glVertexAttributePointer({
 // Variables
 ///////////////
 
-let pitch = 0;
-let yaw = 0;
-const viewDirection = [
-  0.9089657664299011,
-  0,
-  0.4168708026409149,
-  0,
-  0.31862640380859375,
-  0.6448265314102173,
-  -0.6947488188743591,
-  0,
-  -0.26880934834480286,
-  0.7643289566040039,
-  0.5861252546310425,
-  0,
-  0,
-  0,
-  0,
-  1
-];
+let pitch = -0.8;
+let yaw = -0.4;
+const viewDirection = [];
+m4.fromYRotation(viewDirection, yaw);
+m4.rotateX(viewDirection, viewDirection, pitch);
 const cameraPosition = [-800, 1700, 2000];
-
-const fGridSize = 19;
-const fGridDistance = 200;
 
 const cameraMoveSpeed = 1;
 const mouseSensitivity = 0.01;
@@ -462,16 +264,6 @@ let lastPaintTime = Date.now();
 const drawScene = paintTime => {
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // Create a point to draw an F that other Fs will look at
-  const focusAngle = glMatrix.toRadian(paintTime / 10);
-  const focusDistance = 1000;
-  // It rotates around the Y axis
-  const focusPoint = [
-    Math.sin(focusAngle) * focusDistance,
-    -cameraPosition[1] / 2,
-    Math.cos(focusAngle) * focusDistance
-  ];
 
   const aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
 
@@ -517,51 +309,18 @@ const drawScene = paintTime => {
   m4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
 
   // Create a NxN grid of Fs
-  [...Array(fGridSize)].forEach((_, xIndex) => {
-    [...Array(fGridSize)].forEach((_, zIndex) => {
-      // Compute the x and z position from the angle
-      const x = (xIndex - fGridSize / 2) * fGridDistance;
-      const z = (zIndex - fGridSize / 2) * fGridDistance;
+  // Compute the x and z position from the angle
 
-      const matrix = viewProjectionMatrix.slice();
-      // Orient the Fs properly
-      m4.rotateZ(matrix, matrix, glMatrix.toRadian(180));
-      if ((xIndex + zIndex) % 2) {
-        const focusMatrix = [];
-        m4.targetTo(focusMatrix, [x - 25, -38, z - 8], focusPoint, UP);
-        m4.multiply(matrix, matrix, focusMatrix);
-        m4.translate(matrix, matrix, [-25, -37, -7]);
-      } else {
-        m4.translate(matrix, matrix, [x - 50, -75, z - 15]);
-      }
-      // Set the matrix to our uniform location for the vertex shader to use
-      gl.uniformMatrix4fv(matrixLocation, false, matrix);
-
-      // Draw the loaded triangles from the buffer
-      const offset = 0;
-      const count = 16 * 6;
-      gl.drawArrays(gl.TRIANGLES, offset, count);
-    });
-  });
-
-  // Draw the F that is the focus
   const matrix = viewProjectionMatrix.slice();
-  const focusMatrix = [];
-  // Make it look at the camera
-  m4.targetTo(
-    focusMatrix,
-    [-focusPoint[0], -focusPoint[1], focusPoint[2]],
-    cameraPosition,
-    UP
-  );
-  m4.multiply(matrix, matrix, focusMatrix);
-  // m4.rotateX(matrix, matrix, Math.PI);
-  m4.rotateZ(matrix, matrix, Math.PI);
-  // m4.translate(matrix, matrix, focusPoint);
-
+  // Orient the floor
+  m4.rotateZ(matrix, matrix, glMatrix.toRadian(180));
+  m4.scale(matrix, matrix, [100, 1, 100]);
+  // Set the matrix to our uniform location for the vertex shader to use
   gl.uniformMatrix4fv(matrixLocation, false, matrix);
+
+  // Draw the loaded triangles from the buffer
   const offset = 0;
-  const count = 16 * 6;
+  const count = 6;
   gl.drawArrays(gl.TRIANGLES, offset, count);
 
   requestAnimationFrame(drawScene);
