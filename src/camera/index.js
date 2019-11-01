@@ -242,6 +242,7 @@ m4.rotateX(viewDirection, viewDirection, pitch);
 const cameraPosition = [-800, 1700, 2000];
 
 const cameraMoveSpeed = 1;
+const moveDirection = [0, 0, 0];
 const mouseSensitivity = 0.01;
 const FOV = glMatrix.toRadian(60);
 
@@ -254,7 +255,7 @@ const minViewDistance = 1;
 const PITCH_MAX = glMatrix.toRadian(89.9);
 const PITCH_MIN = -PITCH_MAX;
 const UP = [0, 1, 0];
-const moving = {};
+const moving = { forward: 0, left: 0, up: 0 };
 let lastPaintTime = Date.now();
 
 //////////////////
@@ -269,30 +270,9 @@ const drawScene = paintTime => {
 
   // Calculate the new position of the camera (should still be capped directionally)
   const moveDistance = (paintTime - lastPaintTime) * cameraMoveSpeed;
-  if (moving.forward) {
-    cameraPosition[0] -= Math.sin(yaw) * moveDistance;
-    cameraPosition[2] -= Math.cos(yaw) * moveDistance;
-    cameraPosition[1] += Math.sin(pitch) * moveDistance;
-  }
-  if (moving.backward) {
-    cameraPosition[0] += Math.sin(yaw) * moveDistance;
-    cameraPosition[2] += Math.cos(yaw) * moveDistance;
-    cameraPosition[1] -= Math.sin(pitch) * moveDistance;
-  }
-  if (moving.left) {
-    cameraPosition[0] -= Math.cos(yaw) * moveDistance;
-    cameraPosition[2] += Math.sin(yaw) * moveDistance;
-  }
-  if (moving.right) {
-    cameraPosition[0] += Math.cos(yaw) * moveDistance;
-    cameraPosition[2] -= Math.sin(yaw) * moveDistance;
-  }
-  if (moving.up) {
-    cameraPosition[1] += moveDistance;
-  }
-  if (moving.down) {
-    cameraPosition[1] -= moveDistance;
-  }
+  cameraPosition[0] += moveDirection[0] * moveDistance;
+  cameraPosition[1] += moveDirection[1] * moveDistance;
+  cameraPosition[2] += moveDirection[2] * moveDistance;
 
   const cameraMatrix = [];
   m4.fromTranslation(cameraMatrix, cameraPosition);
@@ -327,58 +307,85 @@ const drawScene = paintTime => {
   lastPaintTime = paintTime;
 };
 
+// snelheids vector, lerp naar doel snelheids vector toe
+
+const calculateMoveDirection = () => {
+  console.log(moving);
+  const x = -moving.forward * Math.sin(yaw) - moving.left * Math.cos(yaw);
+  const z = -moving.forward * Math.cos(yaw) - moving.left * Math.sin(yaw);
+  const y = -moving.forward * Math.sin(pitch) - moving.up;
+  if (
+    (moving.forward && moving.left) ||
+    (moving.left && moving.up) ||
+    (moving.forward && moving.up)
+  ) {
+    const magnitude = Math.sqrt(x * x + y * y + z * z);
+    moveDirection[0] = x / magnitude;
+    moveDirection[1] = y / magnitude;
+    moveDirection[2] = z / magnitude;
+  } else {
+    moveDirection[0] = x;
+    moveDirection[1] = y;
+    moveDirection[2] = z;
+  }
+};
+
 document.addEventListener("keydown", e => {
-  switch (e.key) {
+  if (e.repeat) {
+    return;
+  }
+  console.log("DOWN");
+  console.log(e.key);
+  switch (e.key.toLowerCase()) {
     case "w":
-    case "W":
-      moving.forward = true;
+      moving.forward += 1;
       break;
     case "s":
-    case "S":
-      moving.backward = true;
+      moving.forward -= 1;
       break;
     case "a":
-    case "A":
-      moving.left = true;
+      moving.left += 1;
       break;
     case "d":
-    case "D":
-      moving.right = true;
+      moving.left -= 1;
       break;
     case " ":
-      moving.up = true;
+      moving.up += 1;
       break;
-    case "Shift":
-      moving.down = true;
+    case "shift":
+      moving.up -= 1;
       break;
   }
+  calculateMoveDirection();
 });
 
 document.addEventListener("keyup", e => {
-  switch (e.key) {
+  if (e.repeat) {
+    return;
+  }
+  console.log("UP");
+  console.log(e.key);
+  switch (e.key.toLowerCase()) {
     case "w":
-    case "W":
-      moving.forward = false;
+      moving.forward -= 1;
       break;
     case "s":
-    case "S":
-      moving.backward = false;
+      moving.forward += 1;
       break;
     case "a":
-    case "A":
-      moving.left = false;
+      moving.left -= 1;
       break;
     case "d":
-    case "D":
-      moving.right = false;
+      moving.left += 1;
       break;
     case " ":
-      moving.up = false;
+      moving.up -= 1;
       break;
-    case "Shift":
-      moving.down = false;
+    case "shift":
+      moving.up += 1;
       break;
   }
+  calculateMoveDirection();
 });
 
 canvas.addEventListener("click", () => {
