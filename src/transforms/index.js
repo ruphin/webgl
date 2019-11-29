@@ -1,10 +1,4 @@
-import {
-  fullscreen,
-  glsl,
-  createVertexShader,
-  createFragmentShader,
-  createProgram
-} from "../webgl.js";
+import { fullscreen, glsl, createProgram } from "../webgl.js";
 import {
   mat3 as m3,
   glMatrix
@@ -44,9 +38,7 @@ const canvas = document.body.appendChild(document.createElement("canvas"));
 fullscreen(canvas, true);
 const gl = canvas.getContext("webgl2");
 
-const vertexShader = createVertexShader(gl, vertexShaderSource);
-const fragmentShader = createFragmentShader(gl, fragmentShaderSource);
-const program = createProgram(gl, vertexShader, fragmentShader);
+const program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
 
 const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
 

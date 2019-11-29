@@ -34,10 +34,10 @@ const createShader = (gl, type, source) => {
   return shader;
 };
 
-export const createProgram = (gl, vertexShader, fragmentShader) => {
+export const createProgram = (gl, vertexShaderSource, fragmentShaderSource) => {
   const program = gl.createProgram();
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
+  gl.attachShader(program, createVertexShader(gl, vertexShaderSource));
+  gl.attachShader(program, createFragmentShader(gl, fragmentShaderSource));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw Error("Program failed to link");
@@ -67,4 +67,23 @@ export const glVertexAttributePointer = ({
     stride,
     offset
   );
+};
+
+let logContainer;
+export const log = messages => {
+  if (!logContainer) {
+    logContainer = document.createElement("div");
+    Object.assign(logContainer.style, {
+      position: "absolute",
+      top: 0,
+      left: 0
+    });
+    document.body.appendChild(logContainer);
+  }
+  while (logContainer.childNodes.length < messages.length) {
+    logContainer.appendChild(document.createElement("div"));
+  }
+  messages.forEach((message, i) => {
+    logContainer.childNodes[i].innerText = message;
+  });
 };

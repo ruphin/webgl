@@ -1,8 +1,6 @@
 import {
   fullscreen,
   glsl,
-  createVertexShader,
-  createFragmentShader,
   createProgram,
   glVertexAttributePointer
 } from "../webgl.js";
@@ -329,9 +327,7 @@ const canvas = document.body.appendChild(document.createElement("canvas"));
 fullscreen(canvas, true);
 const gl = canvas.getContext("webgl2");
 
-const vertexShader = createVertexShader(gl, vertexShaderSource);
-const fragmentShader = createFragmentShader(gl, fragmentShaderSource);
-const program = createProgram(gl, vertexShader, fragmentShader);
+const program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
 
 // Tell it to use our program (pair of shaders)
 gl.useProgram(program);
