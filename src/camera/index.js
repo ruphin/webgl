@@ -248,6 +248,8 @@ const FOV = glMatrix.toRadian(60);
 
 const minViewDistance = 1;
 
+const keyMap = {};
+
 ///////////////
 // Constants
 ///////////////
@@ -255,7 +257,6 @@ const minViewDistance = 1;
 const PITCH_MAX = glMatrix.toRadian(89.9);
 const PITCH_MIN = -PITCH_MAX;
 const UP = [0, 1, 0];
-const moving = { forward: 0, left: 0, up: 0 };
 let lastPaintTime = Date.now();
 
 //////////////////
@@ -267,6 +268,11 @@ const drawScene = paintTime => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   const aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
+
+  if (keyMap.dirty) {
+    calculateMoveDirection();
+    keyMap.dirty = false;
+  }
 
   // Calculate the new position of the camera (should still be capped directionally)
   const moveDistance = (paintTime - lastPaintTime) * cameraMoveSpeed;
@@ -310,15 +316,14 @@ const drawScene = paintTime => {
 // snelheids vector, lerp naar doel snelheids vector toe
 
 const calculateMoveDirection = () => {
-  console.log(moving);
-  const x = -moving.forward * Math.sin(yaw) - moving.left * Math.cos(yaw);
-  const z = -moving.forward * Math.cos(yaw) - moving.left * Math.sin(yaw);
-  const y = -moving.forward * Math.sin(pitch) - moving.up;
-  if (
-    (moving.forward && moving.left) ||
-    (moving.left && moving.up) ||
-    (moving.forward && moving.up)
-  ) {
+  const forward = keyMap[87] ? (keyMap[83] ? 0 : 1) : keyMap[83] ? -1 : 0;
+  const right = keyMap[68] ? (keyMap[65] ? 0 : 1) : keyMap[65] ? -1 : 0;
+  const up = keyMap[32] ? (keyMap[16] ? 0 : 1) : keyMap[16] ? -1 : 0;
+
+  const x = -forward * Math.sin(yaw) + right * Math.cos(yaw);
+  const z = -forward * Math.cos(yaw) - right * Math.sin(yaw);
+  const y = forward * Math.sin(pitch) + up;
+  if ((forward && right) || (right && up) || (forward && up)) {
     const magnitude = Math.sqrt(x * x + y * y + z * z);
     moveDirection[0] = x / magnitude;
     moveDirection[1] = y / magnitude;
@@ -331,61 +336,17 @@ const calculateMoveDirection = () => {
 };
 
 document.addEventListener("keydown", e => {
-  if (e.repeat) {
-    return;
+  if (!keyMap[e.keyCode]) {
+    keyMap.dirty = true;
   }
-  console.log("DOWN");
-  console.log(e.key);
-  switch (e.key.toLowerCase()) {
-    case "w":
-      moving.forward += 1;
-      break;
-    case "s":
-      moving.forward -= 1;
-      break;
-    case "a":
-      moving.left += 1;
-      break;
-    case "d":
-      moving.left -= 1;
-      break;
-    case " ":
-      moving.up += 1;
-      break;
-    case "shift":
-      moving.up -= 1;
-      break;
-  }
-  calculateMoveDirection();
+  keyMap[e.keyCode] = true;
 });
 
 document.addEventListener("keyup", e => {
-  if (e.repeat) {
-    return;
+  if (keyMap[e.keyCode] !== false) {
+    keyMap.dirty = true;
   }
-  console.log("UP");
-  console.log(e.key);
-  switch (e.key.toLowerCase()) {
-    case "w":
-      moving.forward -= 1;
-      break;
-    case "s":
-      moving.forward += 1;
-      break;
-    case "a":
-      moving.left -= 1;
-      break;
-    case "d":
-      moving.left += 1;
-      break;
-    case " ":
-      moving.up -= 1;
-      break;
-    case "shift":
-      moving.up += 1;
-      break;
-  }
-  calculateMoveDirection();
+  keyMap[e.keyCode] = false;
 });
 
 canvas.addEventListener("click", () => {
