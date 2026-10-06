@@ -12,7 +12,7 @@
   const demos = ["dvd", "transforms", "threedee", "floating_objects", "camera"];
 
   if (demos.includes(activeDemo)) {
-    import(`/${activeDemo}/index.js`);
+    import(`./src/${activeDemo}/index.js`);
   } else {
     demos
       .map(demo => {
@@ -26,5 +26,3 @@
       .forEach(demoLink => body.appendChild(demoLink));
   }
 </script>
-
-<span id="browser-sync-binding"></span>

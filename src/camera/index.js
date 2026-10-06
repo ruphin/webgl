@@ -9,7 +9,7 @@ import {
 import {
   mat4 as m4,
   glMatrix
-} from "../../node_modules/gl-matrix/esm/index.js";
+} from "gl-matrix";
 
 const vertexShaderSource = glsl`#version 300 es
 

@@ -1,20 +1,18 @@
 {
   "name": "skeleton",
   "private": true,
+  "type": "module",
   "description": "A skeleton for basic applications and tests using Web Components",
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "license": "MIT",
   "dependencies": {
     "gl-matrix": "^3.1.0"
   },
   "devDependencies": {
-    "browser-sync": "^2.26.7",
-    "connect-history-api-fallback": "^1.6.0",
-    "rollup": "^1.24.0",
-    "rollup-plugin-browsersync": "^1.0.0"
+    "vite": "^8.3.3"
   }
 }

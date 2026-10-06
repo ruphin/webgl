@@ -2,7 +2,7 @@ import { fullscreen, glsl, createProgram } from "../webgl.js";
 import {
   mat3 as m3,
   glMatrix
-} from "../../node_modules/gl-matrix/esm/index.js";
+} from "gl-matrix";
 
 const vertexShaderSource = glsl`#version 300 es
 
